@@ -1,4 +1,4 @@
-# MtgPowerLevel
+# MtgAnalytics
 
 ## Overview
 
@@ -8,13 +8,13 @@ This is a Python script for analyzing average power levels of MTG cards (based o
 
 Fetch card information from MTG JSON:
 
-    python mtgpowerlevel.py fetchcards data/cards.json
+    python mtganalytics.py fetchcards data/cards.json
 
 Fetch card ratings from Gatherer:
 
-    python mtgpowerlevel.py fetchratings data/cards.json data/ratings.json
+    python mtganalytics.py fetchratings data/cards.json data/ratings.json
 
 Analyze card types relative to ratings:
 
-    python mtgpowerlevel.py analyzetypes data/ratings.json
+    python mtganalytics.py analyzetypes data/ratings.json
 

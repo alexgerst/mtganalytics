@@ -4,9 +4,16 @@ import json
 import re
 
 
+# Threshold for vote counts, below which we ignore Gatherer ratings
 threshold = 10
+
+# URL for MTG JSON card data
 mtgjson_url = 'http://mtgjson.com/json/AllSetsArray-x.json'
+
+# Base URL for Gatherer card data
 gatherer_url = 'http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid='
+
+# Regular expressions for parsing Gatherer pages
 rating_regex = re.compile('class="textRatingValue">(\d+(\.\d*)?|\.\d+)</span>')
 votes_regex = re.compile('class="totalVotesValue">(\d+)</span>')
 

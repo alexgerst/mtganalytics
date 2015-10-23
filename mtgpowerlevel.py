@@ -1,61 +1,91 @@
-import json
+import sys
 import urllib2
+import json
 import re
 
-# Threshold below which we ignore ratings
-threshold = 10
 
-# Hard-coded strings for reference
-base_url = 'http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid='
+threshold = 10
+mtgjson_url = 'http://mtgjson.com/json/AllSetsArray-x.json'
+gatherer_url = 'http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid='
 rating_regex = re.compile('class="textRatingValue">(\d+(\.\d*)?|\.\d+)</span>')
 votes_regex = re.compile('class="totalVotesValue">(\d+)</span>')
 
-# Dictionary to be populated from Gatherer
-rating_dict = {
-    'Artifact': {},
-    'Creature': {},
-    'Enchantment': {},
-    'Instant': {},
-    'Land': {},
-    'Planeswalker': {},
-    'Sorcery': {}
-}
 
-# Load card data from JSON file
-print('Loading card data...')
-with open('AllSetsArray-x.json') as data_file:
-    card_set_list = json.load(data_file)
-print('Card data loaded.')
+def fetch_cards(output_filename):
 
-# Iterate through all cards and fetch their ratings
-for card_set in card_set_list:
-    for card in card_set['cards']:
-        print('Parsing ' + card['name'])
-        if 'multiverseid' in card.keys() and 'types' in card.keys():
-            url = base_url + str(card['multiverseid'])
-            response = urllib2.urlopen(url)
-            response_data = response.read()
-            rating = float(rating_regex.search(response_data).group(1))
-            votes = int(votes_regex.search(response_data).group(1))
-            if votes >= threshold:
-                for card_type in card['types']:
-                    if card_type in rating_dict.keys():
-                        if card['name'] not in rating_dict[card_type].keys():
-                            rating_dict[card_type][card['name']] = []
-                        rating_dict[card_type][card['name']].append(rating)
-                        print(card_type + ' - ' + str(rating))
+    # Dictionary to be populated
+    card_dict = {}
 
-# Analyze the data and find average ratings
-for card_type in rating_dict.keys():
-    total_type_rating = 0.0
-    num_type_ratings = 0
-    for card_name in rating_dict[card_type].keys():
-        total_card_rating = 0.0
-        num_card_ratings = 0
-        for card_rating in rating_dict[card_type][card_name]:
-            total_card_rating += card_rating
-            num_card_ratings++
-        total_type_rating += total_card_rating / num_card_ratings
-        num_type_ratings++
-    print(card_type + ' Average Rating: ' + str(total_type_rating / num_type_ratings))
+    # Load card data from MTG JSON
+    print('Downloading data from MTG JSON')
+    response = urllib2.urlopen(mtgjson_url)
+    card_set_list = json.load(response)
+
+    # Iterate through all cards and strip out unneeded info
+    try:
+        for card_set in card_set_list:
+            for card in card_set['cards']:
+                if 'multiverseid' in card.keys() and 'types' in card.keys():
+                    print(card['name'] + ' (' + str(card['multiverseid']) + ')')
+                    if card['name'] not in card_dict.keys():
+                        card_dict[card['name']] = {
+                            'types': card['types'], 
+                            'ids': []
+                        }
+                    card_dict[card['name']]['ids'].append(card['multiverseid'])
+    except KeyboardInterrupt:
+        pass
+
+    # Write card data to JSON file
+    with open(output_filename, 'w') as output_file:
+        json.dump(card_dict, output_file)
+    return
+
+
+def fetch_ratings(input_filename, output_filename):
+
+    # Load card data from file
+    print('Loading data from file')
+    with open(input_filename, 'r') as input_file:
+        card_dict = json.load(input_file)
+
+    # Iterate through all cards and fetch their ratings
+    try:
+        for card_name in card_dict.keys():
+            total_rating = 0.0
+            num_ratings = 0
+            for card_id in card_dict[card_name]['ids']:
+                print(card_name + ' (' + str(card_id) + ')')
+                response = urllib2.urlopen(gatherer_url + str(card_id))
+                response_data = response.read()
+                rating = float(rating_regex.search(response_data).group(1))
+                votes = int(votes_regex.search(response_data).group(1))
+                if votes >= threshold:
+                    total_rating += rating
+                    num_ratings += 1
+            if num_ratings == 0:
+                card_dict[card_name]['rating'] = None
+            else:
+                card_dict[card_name]['rating'] = total_rating / num_ratings
+    except KeyboardInterrupt:
+        pass
+
+    # Write card data to JSON file
+    with open(output_filename, 'w') as output_file:
+        json.dump(card_dict, output_file)
+    return
+
+
+if len(sys.argv) == 3 and sys.argv[1] == 'fetchcards':
+    fetch_cards(sys.argv[2])
+elif len(sys.argv) == 4 and sys.argv[1] == 'fetchratings':
+    fetch_ratings(sys.argv[2], sys.argv[3])
+else:
+    print('Usage:')
+    print('')
+    print('Fetch card information from MTG JSON:')
+    print('    python mtgpowerlevel.py fetchcards cards.json')
+    print('')
+    print('Fetch card ratings from Gatherer:')
+    print('    python mtgpowerlevel.py fetchratings cards.json ratings.json')
 

@@ -40,7 +40,7 @@ def fetch_cards(output_filename):
                             'ids': []
                         }
                     card_dict[card['name']]['ids'].append(card['multiverseid'])
-    except KeyboardInterrupt:
+    except:
         pass
 
     # Write card data to JSON file
@@ -74,7 +74,7 @@ def fetch_ratings(input_filename, output_filename):
                 card_dict[card_name]['rating'] = None
             else:
                 card_dict[card_name]['rating'] = total_rating / num_ratings
-    except KeyboardInterrupt:
+    except:
         pass
 
     # Write card data to JSON file

@@ -2,6 +2,7 @@ import sys
 import urllib2
 import json
 import re
+import operator
 
 
 # Threshold for vote counts, below which we ignore Gatherer ratings
@@ -18,6 +19,7 @@ rating_regex = re.compile('class="textRatingValue">(\d+(\.\d*)?|\.\d+)</span>')
 votes_regex = re.compile('class="totalVotesValue">(\d+)</span>')
 
 
+# Fetch card information from MTG JSON
 def fetch_cards(output_filename):
 
     # Dictionary to be populated
@@ -33,7 +35,7 @@ def fetch_cards(output_filename):
         for card_set in card_set_list:
             for card in card_set['cards']:
                 if 'multiverseid' in card.keys() and 'types' in card.keys():
-                    print(card['name'] + ' (' + str(card['multiverseid']) + ')')
+                    print('%s (%d)' % (card['name'], card['multiverseid']))
                     if card['name'] not in card_dict.keys():
                         card_dict[card['name']] = {
                             'types': card['types'], 
@@ -49,10 +51,10 @@ def fetch_cards(output_filename):
     return
 
 
+# Fetch card ratings from Gatherer
 def fetch_ratings(input_filename, output_filename):
 
     # Load card data from file
-    print('Loading data from file')
     with open(input_filename, 'r') as input_file:
         card_dict = json.load(input_file)
 
@@ -62,7 +64,7 @@ def fetch_ratings(input_filename, output_filename):
             total_rating = 0.0
             num_ratings = 0
             for card_id in card_dict[card_name]['ids']:
-                print(card_name + ' (' + str(card_id) + ')')
+                print('%s (%d)' % (card_name, card_id))
                 response = urllib2.urlopen(gatherer_url + str(card_id))
                 response_data = response.read()
                 rating = float(rating_regex.search(response_data).group(1))
@@ -83,10 +85,48 @@ def fetch_ratings(input_filename, output_filename):
     return
 
 
+# Analyze card types relative to ratings
+def analyze_types(input_filename):
+
+    # Dictionary to be populated
+    rating_dict = {}
+
+    # Load card data from file
+    with open(input_filename, 'r') as input_file:
+        card_dict = json.load(input_file)
+
+    # Iterate through all cards and analyze their ratings and types
+    for card_name in card_dict.keys():
+        for type_name in card_dict[card_name]['types']:
+            if 'rating' in card_dict[card_name].keys():
+                if type_name not in rating_dict.keys():
+                    rating_dict[type_name] = []
+                rating_dict[type_name].append(card_dict[card_name]['rating'])
+
+    # Iterate through ratings and calculate averages
+    for type_name in rating_dict.keys():
+        total_rating = 0.0
+        num_ratings = 0
+        for rating in rating_dict[type_name]:
+            if rating is not None:
+                total_rating += rating
+                num_ratings += 1
+        del rating_dict[type_name]
+        if num_ratings > 0:
+            rating_dict[type_name] = total_rating / num_ratings
+
+    # Print results
+    for item in sorted(rating_dict.items(), key=operator.itemgetter(1)):
+        print('%-15s %.3f' % (item))
+    return
+
+
 if len(sys.argv) == 3 and sys.argv[1] == 'fetchcards':
     fetch_cards(sys.argv[2])
 elif len(sys.argv) == 4 and sys.argv[1] == 'fetchratings':
     fetch_ratings(sys.argv[2], sys.argv[3])
+elif len(sys.argv) == 3 and sys.argv[1] == 'analyzetypes':
+    analyze_types(sys.argv[2])
 else:
     print('Usage:')
     print('')

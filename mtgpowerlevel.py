@@ -134,5 +134,8 @@ else:
     print('    python mtgpowerlevel.py fetchcards cards.json')
     print('')
     print('Fetch card ratings from Gatherer:')
-    print('    python mtgpowerlevel.py fetchratings cards.json ratings.json')
+    print('    python mtgpowerlevel.py fetchratings data/cards.json data/ratings.json')
+    print('')
+    print('Analyze card types relative to ratings:')
+    print('    python mtgpowerlevel.py analyzetypes data/ratings.json')
 
